@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>Sprite Sheet 预览</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      color: #ccc;
+      gap: 40px;
+    }
+    .panel {
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 12px;
+      color: #6BB3FF;
+      font-size: 18px;
+    }
+    canvas {
+      background: #2a2a4a;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    .info {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h2>idle 动画</h2>
+    <canvas id="idleCanvas" width="256" height="256"></canvas>
+    <div class="info" id="idleInfo">加载中...</div>
+  </div>
+  <div class="panel">
+    <h2>walk 动画</h2>
+    <canvas id="walkCanvas" width="256" height="256"></canvas>
+    <div class="info" id="walkInfo">加载中...</div>
+  </div>
+
+  <script>
+    function loadSpriteSheet(imagePath, jsonPath) {
+      return Promise.all([
+        new Promise((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error('图片加载失败: ' + imagePath));
+          img.src = imagePath;
+        }),
+        fetch(jsonPath).then(r => r.json())
+      ]).then(([image, meta]) => ({ image, ...meta }));
+    }
+
+    function createPlayer(canvas, sheet, infoEl) {
+      const ctx = canvas.getContext('2d');
+      const { image, frameWidth, frameHeight, frameCount, fps, loop } = sheet;
+      const frameInterval = 1000 / fps;
+      let currentFrame = 0;
+      let lastTime = 0;
+
+      infoEl.textContent = `${frameCount}帧 / ${fps}fps / ${frameWidth}x${frameHeight}px`;
+
+      function tick(timestamp) {
+        if (!lastTime) lastTime = timestamp;
+        const elapsed = timestamp - lastTime;
+
+        if (elapsed >= frameInterval) {
+          lastTime = timestamp - (elapsed % frameInterval);
+
+          // 清除
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // 绘制当前帧
+          const sx = currentFrame * frameWidth;
+          ctx.drawImage(
+            image,
+            sx, 0, frameWidth, frameHeight,
+            0, 0, canvas.width, canvas.height
+          );
+
+          // 下一帧
+          if (loop) {
+            currentFrame = (currentFrame + 1) % frameCount;
+          } else {
+            if (currentFrame < frameCount - 1) currentFrame++;
+          }
+        }
+
+        requestAnimationFrame(tick);
+      }
+
+      requestAnimationFrame(tick);
+    }
+
+    async function main() {
+      try {
+        const [idleSheet, walkSheet] = await Promise.all([
+          loadSpriteSheet(
+            '/assets/characters/xiaoai/animations/idle/idle.png',
+            '/assets/characters/xiaoai/animations/idle/idle.json'
+          ),
+          loadSpriteSheet(
+            '/assets/characters/xiaoai/animations/walk/walk.png',
+            '/assets/characters/xiaoai/animations/walk/walk.json'
+          ),
+        ]);
+
+        createPlayer(
+          document.getElementById('idleCanvas'),
+          idleSheet,
+          document.getElementById('idleInfo')
+        );
+        createPlayer(
+          document.getElementById('walkCanvas'),
+          walkSheet,
+          document.getElementById('walkInfo')
+        );
+      } catch (e) {
+        document.getElementById('idleInfo').textContent = '加载失败: ' + e.message;
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>

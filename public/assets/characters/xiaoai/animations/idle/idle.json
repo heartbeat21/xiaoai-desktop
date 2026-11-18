@@ -1,0 +1,11 @@
+{
+  "frameWidth": 256,
+  "frameHeight": 256,
+  "frameCount": 48,
+  "fps": 24,
+  "loop": true,
+  "anchorPoint": {
+    "x": 0.5,
+    "y": 1
+  }
+}
